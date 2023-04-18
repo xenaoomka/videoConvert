@@ -5,7 +5,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install FFmpeg and any other necessary packages
-RUN apk update && apk add --no-cache ffmpeg
+RUN apk update && apk add --no-cache ffmpeg sqlite
 
 # Create a directory for persistent storage
 VOLUME /app/content
