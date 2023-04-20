@@ -15,8 +15,11 @@ codec="libx264"  # You can specify the desired codec here
 # Set database file
 db_file="/app/content/videoConvert.db"
 
+# Set timezone to Mountain Standard Time
+export TZ='MST'
+
 # Create database table if it doesn't exist
-sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS converted_videos (id INTEGER PRIMARY KEY AUTOINCREMENT, original_file_name TEXT, converted_file_name TEXT, claim_number TEXT, ad_notes TEXT);"
+sqlite3 "$db_file" "CREATE TABLE IF NOT EXISTS converted_videos (id INTEGER PRIMARY KEY AUTOINCREMENT, original_file_name TEXT, original_file_date TIMESTAMP, converted_file_name TEXT, converted_file_date TIMESTAMP, claim_number TEXT, ad_notes TEXT);"
 
 # Loop through each file in the input folder
 for file_path in "$input_folder"*; do
@@ -30,6 +33,9 @@ for file_path in "$input_folder"*; do
     if sqlite3 "$db_file" "SELECT original_file_name FROM converted_videos WHERE original_file_name = '$file_name';" | grep -q "$file_name"; then
       echo "Video $file_name has already been converted. Skipping..."
     else
+      # Record original file date
+      original_file_date=$(date +%s -r "$file_path")
+
       # Convert the video to the standard format and write to the output folder
       ffmpeg -i "$file_path" -c:v "$codec" "$output_file_path"
       
@@ -38,8 +44,11 @@ for file_path in "$input_folder"*; do
         # Archive the original input video file
         mv "$file_path" "$archive_folder/$file_name"
 
+        # Record converted file date
+        converted_file_date=$(date +%s)
+
         # Insert the converted video file name, original file name, claim number, and ad notes to the database with NULL values for claim number and ad notes
-        sqlite3 "$db_file" "INSERT INTO converted_videos (original_file_name, converted_file_name, claim_number, ad_notes) VALUES ('$file_name', '$output_file_name', NULL, NULL);"
+        sqlite3 "$db_file" "INSERT INTO converted_videos (original_file_name, original_file_date, converted_file_name, converted_file_date, claim_number, ad_notes) VALUES ('$file_name', '$original_file_date', '$output_file_name', '$converted_file_date', NULL, NULL);"
 
         echo "Video $file_name converted and moved to $output_folder"
       else
